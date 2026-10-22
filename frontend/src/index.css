@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Paleta técnica refinada (estilo Linear/Supabase/Vercel) */
+  --color-brand-darkest: #090A0F;
+  --color-brand-surface: #0E1017;
+  --color-brand-surfaceElevated: #131620;
+  --color-brand-surfaceHighlight: #191D2B;
+  --color-brand-border: #1E2332;
+  --color-brand-borderSubtle: #171B26;
+  --color-brand-borderHover: #2C3347;
+
+  --color-brand-textPrimary: #F4F4F5;
+  --color-brand-textSecondary: #94A3B8;
+  --color-brand-textMuted: #64748B;
+
+  /* Acentos funcionais pontuais da marca */
+  --color-brand-royal: #1D68F2;
+  --color-brand-azure: #0284C7;
+  --color-brand-cyan: #00D2FF;
+  --color-brand-sky: #38BDF8;
+  --color-brand-skyHover: #0EA5E9;
+
+  --color-status-positive: #10B981;
+  --color-status-positiveBg: rgba(16, 185, 129, 0.1);
+  --color-status-warning: #F59E0B;
+  --color-status-warningBg: rgba(245, 158, 11, 0.1);
+  --color-status-critical: #EF4444;
+  --color-status-criticalBg: rgba(239, 68, 68, 0.1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #090A0F;
+  color: #F4F4F5;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tipografia numérica tabular para alinhamento contábil e de métricas */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' on, 'zero' on;
+}
+
+/* Scrollbars discretas e técnicas */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090A0F;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E2332;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2C3347;
+}
+
+/* Hover de cards rápido, sutil e tátil sem glows neon de IA */
+.card-hover-effect {
+  transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.card-hover-effect:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+

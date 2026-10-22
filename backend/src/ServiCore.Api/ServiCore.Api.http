@@ -1,0 +1,6 @@
+@ServiCore.Api_HostAddress = http://localhost:5248
+
+GET {{ServiCore.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
