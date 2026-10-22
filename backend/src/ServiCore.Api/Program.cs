@@ -1,10 +1,13 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ServiCore.Api.Middlewares;
 using ServiCore.Application.Common.Interfaces;
+using ServiCore.Application.Common.Models;
 using ServiCore.Domain.Entities;
 using ServiCore.Domain.Enums;
 using ServiCore.Infrastructure;
@@ -13,7 +16,25 @@ using ServiCore.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Configuração de Serviços
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .SelectMany(e => e.Value!.Errors.Select(x => string.IsNullOrWhiteSpace(x.ErrorMessage) ? "Valor inválido fornecido." : x.ErrorMessage))
+                .ToList();
+
+            var message = errors.Count > 0 ? errors[0] : "Dados de requisição inválidos.";
+            var response = ApiResponse<object>.Fail(message, errors);
+            return new BadRequestObjectResult(response);
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // Configuração de Autenticação JWT

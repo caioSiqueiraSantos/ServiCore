@@ -73,10 +73,31 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   }
 
   if (!response.ok || !json.success) {
+    let errorMessage = json.message
+    let errorList: string[] | undefined = Array.isArray(json.errors) ? json.errors : undefined
+
+    // Trata respostas no formato ProblemDetails do ASP.NET Core ({ title, detail, errors })
+    const rawJson = json as unknown as Record<string, unknown>
+    if (!errorMessage) {
+      if (typeof rawJson.detail === 'string' && rawJson.detail.trim()) {
+        errorMessage = rawJson.detail
+      } else if (typeof rawJson.title === 'string' && rawJson.title.trim()) {
+        errorMessage = rawJson.title
+      }
+    }
+
+    if (!errorList && rawJson.errors && typeof rawJson.errors === 'object') {
+      const errObj = rawJson.errors as Record<string, string[]>
+      errorList = Object.values(errObj).flat()
+      if (!errorMessage && errorList.length > 0) {
+        errorMessage = errorList[0]
+      }
+    }
+
     throw new ApiError(
-      json.message || 'Erro inesperado na comunicação com a API.',
+      errorMessage || 'Erro inesperado na comunicação com a API.',
       response.status,
-      json.errors
+      errorList
     )
   }
 

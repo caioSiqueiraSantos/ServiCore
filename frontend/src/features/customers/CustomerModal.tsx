@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { X, User, Building2, Phone, Mail, FileText, AlertCircle } from 'lucide-react'
@@ -112,7 +112,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       onClose()
     },
     onError: (err: unknown) => {
-      if (err instanceof Error) {
+      if (err instanceof ApiError && err.errors && err.errors.length > 0) {
+        setError(`${err.message} (${err.errors.join(', ')})`)
+      } else if (err instanceof Error) {
         setError(err.message)
       } else {
         setError('Ocorreu um erro ao salvar o cliente.')
