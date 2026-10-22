@@ -1,0 +1,88 @@
+## ============================================================================
+## Build Results & Compilations (.NET / C#)
+## ============================================================================
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+## ============================================================================
+## Database & Local Storage Files (SQLite, LocalDB, etc.)
+## ============================================================================
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.mdf
+*.ldf
+
+## ============================================================================
+## Visual Studio & IDE Specifics
+## ============================================================================
+.vs/
+*.sln.ide/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# JetBrains Rider & ReSharper
+.idea/
+*.DotSettings.user
+_ReSharper*/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+*.code-workspace
+
+## ============================================================================
+## Testing & Code Coverage
+## ============================================================================
+[Tt]est[Rr]esult*/
+TestResults/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+coverage*.xml
+coverage*.json
+coverage*.info
+
+## ============================================================================
+## Secrets, Environment & Local Configuration
+## ============================================================================
+appsettings*.local.json
+*.env
+*.env.*
+!.env.example
+
+## ============================================================================
+## Frontend & Node.js Artifacts
+## ============================================================================
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+## ============================================================================
+## OS & System Files
+## ============================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
