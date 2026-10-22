@@ -10,6 +10,13 @@ public interface IAppDbContext
     DbSet<Membership> Memberships { get; }
     DbSet<Customer> Customers { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Contract> Contracts { get; }
+    DbSet<ContractItem> ContractItems { get; }
+    DbSet<ServiceItem> Services { get; }
+    DbSet<TaskItem> Tasks { get; }
+    DbSet<CalendarEvent> CalendarEvents { get; }
+    DbSet<ContractAttachment> ContractAttachments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
+

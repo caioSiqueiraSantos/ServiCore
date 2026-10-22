@@ -114,10 +114,34 @@ dotnet dotnet-ef database update --project src/ServiCore.Infrastructure/ServiCor
 
 ---
 
+---
+
+## 🐘 Preparação para Migração: PostgreSQL (Neon Database) e Storage de Arquivos
+
+A Etapa 3 foi desenhada e arquitetada para transição transparente para o **Neon PostgreSQL** e armazenamento de objetos (S3 / Cloudflare R2 / Supabase Storage):
+
+### 1. Desacoplamento de Anexos e Arquivos
+- **Abstração `IStorageService`**: A interface `IStorageService` no `ServiCore.Application` define métodos assíncronos para `UploadAsync`, `DownloadAsync`, `DeleteAsync` e `GetSignedUrlAsync`.
+- **Implementação Atual (`NullStorageService`)**: No ambiente local com SQLite, o sistema registra `NullStorageService`, gravando apenas metadados (`fileName`, `contentType`, `fileSizeBytes`, `storageKeyOrUrl`) na entidade `ContractAttachment` sem gravar BLOBs pesados ou corromper a base SQLite.
+- **Próximo Passo no Neon**: Ao ativar o Neon, basta implementar `S3StorageService` ou `SupabaseStorageService` e registrar no container de DI sem alterar nenhuma regra de domínio ou controller.
+
+### 2. Migração para o Neon Database (PostgreSQL)
+Para apontar o backend para sua instância Neon:
+1. Adicione o pacote `Npgsql.EntityFrameworkCore.PostgreSQL` ao projeto `ServiCore.Infrastructure`.
+2. Em `appsettings.json`, defina a connection string do Neon:
+   ```json
+   "ConnectionStrings": {
+     "DefaultConnection": "Host=ep-xyz.us-east-2.aws.neon.tech;Database=neondb;Username=user;Password=pass;SSL Mode=Require;"
+   }
+   ```
+3. No `DependencyInjection.cs` da Infrastructure, troque `.UseSqlite(...)` por `.UseNpgsql(...)`. O domínio já utiliza `long` em centavos para moedas (`amountCents`) e tipos ANSI/UTC compatíveis nativamente com Postgres.
+
+---
+
 ## 🗺️ Roadmap de Implementação
 
 - [x] **Etapa 1 — Fundação**: Solução .NET, projetos, EF Core SQLite, migrations, layout base responsivo, dark mode, design tokens, dashboard demonstrativo conectado ao backend e suíte de testes.
 - [x] **Etapa 2 — Identidade e Clientes**: Autenticação segura JWT, PBKDF2 hashing, multitenancy por workspace com isolamento estrito via Global Query Filter, CRUD completo de clientes PF/PJ com máscaras de CPF/CNPJ, gaveta de detalhes 360º, auditoria e 17 testes automatizados.
-- [ ] **Etapa 3 — Contratos e Operação**: Gestão de contratos (fixo, hora, recorrente), catálogo de serviços, tarefas e agenda interativa.
+- [x] **Etapa 3 — Contratos e Operação**: Gestão de contratos (fixo, hora, recorrente com itens e cálculos em centavos), catálogo de serviços, quadro Kanban e lista de tarefas com prazos e prioridades, calendário interativo mensal com eventos operacionais e abstração de storage para migração futura ao PostgreSQL Neon.
 - [ ] **Etapa 4 — Financeiro**: Contas a receber, baixas parciais, despesas, fluxo de caixa real e simulador de pagamentos idempotente.
 - [ ] **Etapa 5 — Finalização**: Dashboard consolidado em tempo real, auditoria completa, acessibilidade e documentação final.

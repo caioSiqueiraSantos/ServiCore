@@ -328,6 +328,9 @@ public class CustomersController : ApiControllerBase
         if (customer == null)
             return NotFound(ApiResponse<CustomerSummaryDto>.Fail("Cliente não encontrado."));
 
+        var activeContractsCount = await _context.Contracts
+            .CountAsync(c => c.CustomerId == id && c.Status == ContractStatus.Active);
+
         var summary = new CustomerSummaryDto
         {
             Id = customer.Id,
@@ -337,7 +340,7 @@ public class CustomersController : ApiControllerBase
             Email = customer.Email,
             Phone = customer.Phone,
             Status = customer.Status,
-            ActiveContractsCount = 0,
+            ActiveContractsCount = activeContractsCount,
             TotalBilledCents = 0,
             PendingReceivablesCents = 0
         };

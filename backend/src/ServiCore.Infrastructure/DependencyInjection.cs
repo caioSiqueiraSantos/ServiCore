@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentWorkspaceService, CurrentWorkspaceService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IStorageService, NullStorageService>();
 
         return services;
     }
