@@ -386,3 +386,256 @@ export interface DemoDashboardStats {
     expenses: number
   }>
 }
+
+// ==========================================
+// MÓDULO FINANCEIRO (ETAPA 4)
+// ==========================================
+
+export type ReceivableStatus = 'Pending' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Cancelled'
+
+export type ReceivableCategory =
+  | 'ServiceExecution'
+  | 'Consulting'
+  | 'RecurringSubscription'
+  | 'Advisory'
+  | 'AdvancePayment'
+  | 'Other'
+
+export type ExpenseStatus = 'Pending' | 'Paid' | 'Overdue' | 'Cancelled'
+
+export type ExpenseCategory =
+  | 'SoftwareAndTools'
+  | 'OfficeAndCoworking'
+  | 'MarketingAndSales'
+  | 'TaxesAndAccounting'
+  | 'EquipmentAndHardware'
+  | 'ThirdPartyServices'
+  | 'SalariesAndWithdrawals'
+  | 'Other'
+
+export type PaymentMethod =
+  | 'Pix'
+  | 'CreditCard'
+  | 'DebitCard'
+  | 'BankSlip'
+  | 'BankTransfer'
+  | 'Cash'
+  | 'Other'
+
+export interface Payment {
+  id: string
+  receivableId: string
+  amountCents: number
+  amountFormatted: number
+  paymentDate: string
+  method: PaymentMethod
+  methodName: string
+  transactionReference?: string
+  notes?: string
+  idempotencyKey?: string
+  createdAtUtc: string
+}
+
+export interface Receivable {
+  id: string
+  customerId: string
+  customerName: string
+  customerDocument?: string
+  contractId?: string
+  contractTitle?: string
+  title: string
+  description?: string
+  category: ReceivableCategory
+  categoryName: string
+  amountCents: number
+  amountFormatted: number
+  paidAmountCents: number
+  paidAmountFormatted: number
+  remainingAmountCents: number
+  remainingAmountFormatted: number
+  dueDate: string
+  issueDate: string
+  status: ReceivableStatus
+  statusName: string
+  installmentNumber?: number
+  totalInstallments?: number
+  notes?: string
+  createdAtUtc: string
+  payments: Payment[]
+}
+
+export interface CreateReceivablePayload {
+  customerId: string
+  contractId?: string
+  title: string
+  description?: string
+  category: ReceivableCategory
+  amountCents: number
+  dueDate: string
+  issueDate?: string
+  totalInstallments?: number
+  notes?: string
+}
+
+export interface UpdateReceivablePayload {
+  customerId: string
+  contractId?: string
+  title: string
+  description?: string
+  category: ReceivableCategory
+  amountCents: number
+  dueDate: string
+  issueDate?: string
+  installmentNumber?: number
+  totalInstallments?: number
+  notes?: string
+}
+
+export interface RegisterPaymentPayload {
+  amountCents: number
+  paymentDate?: string
+  method: PaymentMethod
+  notes?: string
+  transactionReference?: string
+  idempotencyKey?: string
+}
+
+export interface Expense {
+  id: string
+  description: string
+  category: ExpenseCategory
+  categoryName: string
+  amountCents: number
+  amountFormatted: number
+  dueDate: string
+  paymentDate?: string
+  status: ExpenseStatus
+  statusName: string
+  paymentMethod?: PaymentMethod
+  paymentMethodName?: string
+  supplier?: string
+  notes?: string
+  createdAtUtc: string
+}
+
+export interface CreateExpensePayload {
+  description: string
+  category: ExpenseCategory
+  amountCents: number
+  dueDate: string
+  supplier?: string
+  notes?: string
+  isAlreadyPaid: boolean
+  paymentDate?: string
+  paymentMethod?: PaymentMethod
+}
+
+export interface UpdateExpensePayload {
+  description: string
+  category: ExpenseCategory
+  amountCents: number
+  dueDate: string
+  supplier?: string
+  notes?: string
+}
+
+export interface PayExpensePayload {
+  paymentDate?: string
+  method: PaymentMethod
+  notes?: string
+}
+
+export interface DailyFlowItem {
+  date: string
+  inflowCents: number
+  inflowFormatted: number
+  outflowCents: number
+  outflowFormatted: number
+  netCents: number
+  netFormatted: number
+}
+
+export interface CategoryDistribution {
+  categoryName: string
+  amountCents: number
+  amountFormatted: number
+  percentage: number
+  type: 'Expense' | 'Receivable'
+}
+
+export interface FinancialActivity {
+  id: string
+  title: string
+  category?: string
+  type: 'Inflow' | 'Outflow'
+  amountCents: number
+  amountFormatted: number
+  date: string
+  status: string
+  reference?: string
+}
+
+export interface CashFlowSummary {
+  startDate: string
+  endDate: string
+
+  totalReceivablesPendingCents: number
+  totalReceivablesPendingFormatted: number
+
+  totalReceivablesOverdueCents: number
+  totalReceivablesOverdueFormatted: number
+
+  totalReceivablesPaidCents: number
+  totalReceivablesPaidFormatted: number
+
+  totalExpensesPendingCents: number
+  totalExpensesPendingFormatted: number
+
+  totalExpensesOverdueCents: number
+  totalExpensesOverdueFormatted: number
+
+  totalExpensesPaidCents: number
+  totalExpensesPaidFormatted: number
+
+  realizedNetBalanceCents: number
+  realizedNetBalanceFormatted: number
+
+  projectedNetBalanceCents: number
+  projectedNetBalanceFormatted: number
+
+  dailyFlow: DailyFlowItem[]
+  categoryDistribution: CategoryDistribution[]
+  recentActivities: FinancialActivity[]
+}
+
+export interface SimulatePaymentPayload {
+  receivableId: string
+  amountCents: number
+  method: PaymentMethod
+  idempotencyKey: string
+  customerDocument?: string
+  cardNumberMock?: string
+  cardHolderMock?: string
+  notes?: string
+}
+
+export interface SimulatePaymentResponse {
+  receiptId: string
+  idempotencyKey: string
+  isIdempotentReplay: boolean
+  status: string
+  receivableId: string
+  receivableTitle: string
+  customerName: string
+  amountPaidCents: number
+  amountPaidFormatted: number
+  remainingBalanceCents: number
+  remainingBalanceFormatted: number
+  receivableNewStatus: string
+  paymentMethodName: string
+  transactionAuthorizationCode: string
+  pixQrCodePayload?: string
+  processedAtUtc: string
+  message: string
+}
+

@@ -16,6 +16,9 @@ public interface IAppDbContext
     DbSet<TaskItem> Tasks { get; }
     DbSet<CalendarEvent> CalendarEvents { get; }
     DbSet<ContractAttachment> ContractAttachments { get; }
+    DbSet<Receivable> Receivables { get; }
+    DbSet<Payment> Payments { get; }
+    DbSet<Expense> Expenses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -224,6 +224,154 @@ if (app.Environment.IsDevelopment())
                 db.SaveChanges();
             }
         }
+
+        if (!db.Receivables.Any() && db.Workspaces.Any())
+        {
+            var ws = db.Workspaces.First();
+            var customers = db.Customers.Where(c => c.WorkspaceId == ws.Id).ToList();
+            var contracts = db.Contracts.Where(c => c.WorkspaceId == ws.Id).ToList();
+
+            if (customers.Count >= 3)
+            {
+                var contract1 = contracts.FirstOrDefault();
+                var contract2 = contracts.Skip(1).FirstOrDefault();
+
+                // 1. Conta a Receber Quitada (com baixa Pix total)
+                var r1 = new Receivable(
+                    ws.Id,
+                    customers[0].Id,
+                    "Parcela 1/3 - Reestruturação de Identidade",
+                    new Money(500000), // R$ 5.000,00
+                    DateTime.UtcNow.AddDays(-15),
+                    DateTime.UtcNow.AddDays(-30),
+                    ReceivableCategory.ServiceExecution,
+                    contract1?.Id,
+                    "Primeira parcela referente à aprovação dos wireframes e design system.",
+                    1,
+                    3,
+                    "Pagamento confirmado via Pix."
+                );
+                r1.RegisterPayment(
+                    new Money(500000),
+                    DateTime.UtcNow.AddDays(-16),
+                    PaymentMethod.Pix,
+                    "Baixa confirmada via chave Pix CNPJ.",
+                    "PIX-20261012-99881",
+                    "idemp-seed-pix-001"
+                );
+
+                // 2. Conta a Receber Parcialmente Quitada (baixa parcial de 50%)
+                var r2 = new Receivable(
+                    ws.Id,
+                    customers[0].Id,
+                    "Parcela 2/3 - Implementação Front-end",
+                    new Money(500000), // R$ 5.000,00
+                    DateTime.UtcNow.AddDays(5),
+                    DateTime.UtcNow.AddDays(-10),
+                    ReceivableCategory.ServiceExecution,
+                    contract1?.Id,
+                    "Segunda parcela referente à entrega da navegação e telas principais.",
+                    2,
+                    3,
+                    "Adiantamento parcial de 50% depositado pelo cliente."
+                );
+                r2.RegisterPayment(
+                    new Money(250000), // R$ 2.500,00
+                    DateTime.UtcNow.AddDays(-2),
+                    PaymentMethod.BankTransfer,
+                    "Entrada parcial via TED confirmada em conta.",
+                    "TED-00384729-BR",
+                    "idemp-seed-ted-002"
+                );
+
+                // 3. Conta a Receber Pendente no prazo (Contrato Recorrente de DevOps)
+                var r3 = new Receivable(
+                    ws.Id,
+                    customers[1].Id,
+                    "Mensalidade Outubro - Sustentação & DevOps Cloud",
+                    new Money(450000), // R$ 4.500,00
+                    DateTime.UtcNow.AddDays(10),
+                    DateTime.UtcNow.AddDays(-5),
+                    ReceivableCategory.RecurringSubscription,
+                    contract2?.Id,
+                    "Fatura mensal de sustentação contínua de infraestrutura e monitoramento.",
+                    10,
+                    12,
+                    "Boleto emitido e enviado ao financeiro do cliente."
+                );
+
+                // 4. Conta a Receber Vencida (Overdue)
+                var r4 = new Receivable(
+                    ws.Id,
+                    customers[2].Id,
+                    "Consultoria Inicial de Processos & Compliance",
+                    new Money(350000), // R$ 3.500,00
+                    DateTime.UtcNow.AddDays(-7),
+                    DateTime.UtcNow.AddDays(-25),
+                    ReceivableCategory.Consulting,
+                    null,
+                    "Diagnóstico presencial de processos internos e mapeamento de riscos.",
+                    1,
+                    1,
+                    "Aguardando confirmação do departamento financeiro do cliente."
+                );
+                r4.RefreshStatus();
+
+                db.Receivables.AddRange(r1, r2, r3, r4);
+            }
+
+            // Despesas Iniciais
+            var exp1 = new Expense(
+                ws.Id,
+                "Assinatura Adobe Creative Cloud & Figma Enterprise",
+                ExpenseCategory.SoftwareAndTools,
+                new Money(48000), // R$ 480,00
+                DateTime.UtcNow.AddDays(-10),
+                "Adobe Systems Brasil",
+                "Licenças mensais para design e prototipagem.",
+                isAlreadyPaid: true,
+                paymentDate: DateTime.UtcNow.AddDays(-10),
+                paymentMethod: PaymentMethod.CreditCard
+            );
+
+            var exp2 = new Expense(
+                ws.Id,
+                "Servidor em Nuvem Neon PostgreSQL & Vercel",
+                ExpenseCategory.SoftwareAndTools,
+                new Money(32000), // R$ 320,00
+                DateTime.UtcNow.AddDays(-5),
+                "Neon Database Inc.",
+                "Hospedagem e instâncias de banco de dados gerenciadas.",
+                isAlreadyPaid: true,
+                paymentDate: DateTime.UtcNow.AddDays(-5),
+                paymentMethod: PaymentMethod.CreditCard
+            );
+
+            var exp3 = new Expense(
+                ws.Id,
+                "Locação Estação Coworking & Sala de Reunião",
+                ExpenseCategory.OfficeAndCoworking,
+                new Money(120000), // R$ 1.200,00
+                DateTime.UtcNow.AddDays(8),
+                "WeWork Vila Olímpia",
+                "Mensalidade da posição fixa de trabalho presencial.",
+                isAlreadyPaid: false
+            );
+
+            var exp4 = new Expense(
+                ws.Id,
+                "Assessoria Contábil & Emissão de Notas Fiscais",
+                ExpenseCategory.TaxesAndAccounting,
+                new Money(65000), // R$ 650,00
+                DateTime.UtcNow.AddDays(15),
+                "Contabilidade Dinâmica Associados",
+                "Honorários mensais e fechamento de balancete.",
+                isAlreadyPaid: false
+            );
+
+            db.Expenses.AddRange(exp1, exp2, exp3, exp4);
+            db.SaveChanges();
+        }
     }
     catch (Exception ex)
     {

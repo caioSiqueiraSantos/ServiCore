@@ -39,6 +39,9 @@ public class ServiCoreDbContext : DbContext, IAppDbContext
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<ContractAttachment> ContractAttachments => Set<ContractAttachment>();
+    public DbSet<Receivable> Receivables => Set<Receivable>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +85,21 @@ public class ServiCoreDbContext : DbContext, IAppDbContext
             _currentWorkspaceService == null ||
             !_currentWorkspaceService.WorkspaceId.HasValue ||
             a.WorkspaceId == _currentWorkspaceService.WorkspaceId);
+
+        modelBuilder.Entity<Receivable>().HasQueryFilter(r =>
+            _currentWorkspaceService == null ||
+            !_currentWorkspaceService.WorkspaceId.HasValue ||
+            r.WorkspaceId == _currentWorkspaceService.WorkspaceId);
+
+        modelBuilder.Entity<Payment>().HasQueryFilter(p =>
+            _currentWorkspaceService == null ||
+            !_currentWorkspaceService.WorkspaceId.HasValue ||
+            p.WorkspaceId == _currentWorkspaceService.WorkspaceId);
+
+        modelBuilder.Entity<Expense>().HasQueryFilter(e =>
+            _currentWorkspaceService == null ||
+            !_currentWorkspaceService.WorkspaceId.HasValue ||
+            e.WorkspaceId == _currentWorkspaceService.WorkspaceId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

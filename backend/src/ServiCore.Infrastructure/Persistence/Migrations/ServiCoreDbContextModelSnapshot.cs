@@ -341,6 +341,62 @@ namespace ServiCore.Infrastructure.Persistence.Migrations
                     b.ToTable("Customers", (string)null);
                 });
 
+            modelBuilder.Entity("ServiCore.Domain.Entities.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PaymentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Supplier")
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId", "Category");
+
+                    b.HasIndex("WorkspaceId", "DueDate");
+
+                    b.HasIndex("WorkspaceId", "Status");
+
+                    b.ToTable("Expenses", (string)null);
+                });
+
             modelBuilder.Entity("ServiCore.Domain.Entities.Membership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -373,6 +429,126 @@ namespace ServiCore.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Memberships", (string)null);
+                });
+
+            modelBuilder.Entity("ServiCore.Domain.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ReceivableId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TransactionReference")
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceivableId");
+
+                    b.HasIndex("WorkspaceId", "IdempotencyKey");
+
+                    b.HasIndex("WorkspaceId", "PaymentDate");
+
+                    b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("ServiCore.Domain.Entities.Receivable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("ContractId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("InstallmentNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("PaidAmount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TotalInstallments")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContractId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("WorkspaceId", "CustomerId");
+
+                    b.HasIndex("WorkspaceId", "DueDate");
+
+                    b.HasIndex("WorkspaceId", "Status");
+
+                    b.ToTable("Receivables", (string)null);
                 });
 
             modelBuilder.Entity("ServiCore.Domain.Entities.ServiceItem", b =>
@@ -658,6 +834,17 @@ namespace ServiCore.Infrastructure.Persistence.Migrations
                     b.Navigation("Workspace");
                 });
 
+            modelBuilder.Entity("ServiCore.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("ServiCore.Domain.Entities.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Workspace");
+                });
+
             modelBuilder.Entity("ServiCore.Domain.Entities.Membership", b =>
                 {
                     b.HasOne("ServiCore.Domain.Entities.User", "User")
@@ -673,6 +860,51 @@ namespace ServiCore.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("ServiCore.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("ServiCore.Domain.Entities.Receivable", "Receivable")
+                        .WithMany("Payments")
+                        .HasForeignKey("ReceivableId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ServiCore.Domain.Entities.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Receivable");
+
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("ServiCore.Domain.Entities.Receivable", b =>
+                {
+                    b.HasOne("ServiCore.Domain.Entities.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ServiCore.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ServiCore.Domain.Entities.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contract");
+
+                    b.Navigation("Customer");
 
                     b.Navigation("Workspace");
                 });
@@ -727,6 +959,11 @@ namespace ServiCore.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("ServiCore.Domain.Entities.Receivable", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("ServiCore.Domain.Entities.User", b =>
