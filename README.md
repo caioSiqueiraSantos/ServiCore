@@ -2,6 +2,11 @@
 
 O **ServiCore** é uma plataforma web moderna concebida para centralizar a gestão operacional e financeira de profissionais autônomos, freelancers e pequenas empresas prestadoras de serviços. O sistema elimina o uso de planilhas dispersas e ferramentas desconectadas, unindo clientes, contratos, tarefas, agenda e movimentações financeiras em um único fluxo intuitivo.
 
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="ServiCore - Painel Executivo e Operações Unificadas" width="100%">
+</p>
+
 ---
 
 ## 🏛️ Arquitetura e Decisões Técnicas
