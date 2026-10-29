@@ -1,0 +1,11 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/out
+**/servicore.db
+**/servicore.db*
+**/*.user
+**/*.suo
+**/logs

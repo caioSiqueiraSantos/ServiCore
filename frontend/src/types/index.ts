@@ -388,6 +388,92 @@ export interface DemoDashboardStats {
 }
 
 // ==========================================
+// MÓDULO DASHBOARD & AUDITORIA (ETAPA 5)
+// ==========================================
+
+export interface DashboardKpis {
+  totalReceivedCents: number
+  totalReceivedFormatted: number
+  pendingReceivablesCents: number
+  pendingReceivablesFormatted: number
+  overdueReceivablesCents: number
+  overdueReceivablesFormatted: number
+  paidExpensesCents: number
+  paidExpensesFormatted: number
+  realizedNetBalanceCents: number
+  realizedNetBalanceFormatted: number
+  activeContractsCount: number
+  totalCustomersCount: number
+  ongoingTasksCount: number
+  upcomingEventsCount: number
+}
+
+export interface UrgentOverdueInvoice {
+  receivableId: string
+  invoiceTitle: string
+  customerName: string
+  customerPhone?: string
+  customerEmail?: string
+  amountCents: number
+  amountFormatted: number
+  remainingCents: number
+  remainingFormatted: number
+  dueDate: string
+  daysOverdue: number
+  contractTitle?: string
+}
+
+export interface UpcomingCommitment {
+  id: string
+  title: string
+  date: string
+  type: string
+  typeName: string
+  customerName?: string
+  locationOrLink?: string
+  isCompleted: boolean
+}
+
+export interface MonthlyCashFlowPoint {
+  month: string
+  receivedCents: number
+  receivedFormatted: number
+  expensesCents: number
+  expensesFormatted: number
+  netCents: number
+  netFormatted: number
+}
+
+export interface DashboardActivityItem {
+  id: string
+  action: string
+  entityName: string
+  description: string
+  timestampUtc: string
+  userFullName?: string
+}
+
+export interface DashboardOverview {
+  kpis: DashboardKpis
+  urgentOverdueInvoices: UrgentOverdueInvoice[]
+  upcomingCommitments: UpcomingCommitment[]
+  monthlyCashFlowSeries: MonthlyCashFlowPoint[]
+  recentActivities: DashboardActivityItem[]
+}
+
+export interface AuditLog {
+  id: string
+  workspaceId?: string
+  userId?: string
+  userFullName?: string
+  action: string
+  entityName: string
+  entityId: string
+  changesJson?: string
+  timestampUtc: string
+}
+
+// ==========================================
 // MÓDULO FINANCEIRO (ETAPA 4)
 // ==========================================
 

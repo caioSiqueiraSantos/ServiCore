@@ -16,7 +16,19 @@ public static class DependencyInjection
 
         services.AddDbContext<ServiCoreDbContext>((sp, options) =>
         {
-            options.UseSqlite(connectionString);
+            var isPostgres = connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+                             || connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
+                             || connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+                             || connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase);
+
+            if (isPostgres)
+            {
+                options.UseNpgsql(connectionString);
+            }
+            else
+            {
+                options.UseSqlite(connectionString);
+            }
         });
 
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<ServiCoreDbContext>());
@@ -25,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IStorageService, NullStorageService>();
+        services.AddScoped<IAuditService, AuditService>();
 
         return services;
     }

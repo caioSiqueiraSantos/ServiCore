@@ -10,14 +10,9 @@ import {
   FileText,
   Calendar,
   CheckCircle2,
-  DollarSign,
   Trash2,
-  ArrowRight,
-  ShieldCheck,
-  CreditCard,
   QrCode,
   Tag,
-  AlertTriangle,
 } from 'lucide-react'
 import type { Receivable } from '@/types'
 
@@ -61,15 +56,15 @@ export const ReceivableDetailsDrawer: React.FC<ReceivableDetailsDrawerProps> = (
   const getStatusBadge = () => {
     switch (receivable.status) {
       case 'Paid':
-        return <Badge variant="emerald">Quitado</Badge>
+        return <Badge variant="positive">Quitado</Badge>
       case 'PartiallyPaid':
         return <Badge variant="sky">Parcialmente Pago</Badge>
       case 'Overdue':
-        return <Badge variant="rose">Atrasado</Badge>
+        return <Badge variant="critical">Atrasado</Badge>
       case 'Cancelled':
-        return <Badge variant="gray">Cancelado</Badge>
+        return <Badge variant="default">Cancelado</Badge>
       default:
-        return <Badge variant="amber">Pendente</Badge>
+        return <Badge variant="warning">Pendente</Badge>
     }
   }
 

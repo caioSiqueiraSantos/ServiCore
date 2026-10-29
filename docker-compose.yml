@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # 1. Banco de Dados Relacional - PostgreSQL 16
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: servicore_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: servicore
+      POSTGRES_PASSWORD: servicore_secret_pw
+      POSTGRES_DB: servicore_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servicore -d servicore_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 2. Backend ASP.NET Core 8 Web API
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: servicore_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=servicore_db;Username=servicore;Password=servicore_secret_pw
+      - Jwt__SecretKey=SuperSecretProductionKeyOfAtLeast32CharsLength123456789!
+      - Jwt__Issuer=ServiCore.Api
+      - Jwt__Audience=ServiCore.App
+      - Jwt__ExpirationMinutes=1440
+      - Cors__AllowedOrigins=http://localhost:3000,http://localhost:5173
+    ports:
+      - "5248:8080"
+
+  # ============================================================================
+  # 3. Frontend React 19 + Vite (Nginx SPA)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:5248
+    container_name: servicore_web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
+    driver: local

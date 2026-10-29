@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency } from '@/lib/utils'
-import { X, DollarSign, Calendar, Layers, FileText, CheckCircle2 } from 'lucide-react'
+import { X, DollarSign, Layers, CheckCircle2 } from 'lucide-react'
 import type {
   Receivable,
   ReceivableCategory,
@@ -148,27 +148,27 @@ export const ReceivableModal: React.FC<ReceivableModalProps> = ({
         customerId,
         contractId: contractId || null,
         title: title.trim(),
-        description: description.trim() || null,
+        description: description.trim() || undefined,
         category,
         amountCents,
         dueDate: new Date(dueDate).toISOString(),
-        issueDate: issueDate ? new Date(issueDate).toISOString() : null,
+        issueDate: issueDate ? new Date(issueDate).toISOString() : undefined,
         installmentNumber: receivableToEdit?.installmentNumber || 1,
         totalInstallments: totalInstallments || 1,
-        notes: notes.trim() || null,
+        notes: notes.trim() || undefined,
       })
     } else {
       createMutation.mutate({
         customerId,
-        contractId: contractId || null,
+        contractId: contractId || undefined,
         title: title.trim(),
-        description: description.trim() || null,
+        description: description.trim() || undefined,
         category,
         amountCents,
         dueDate: new Date(dueDate).toISOString(),
         issueDate: issueDate ? new Date(issueDate).toISOString() : undefined,
         totalInstallments: totalInstallments > 1 ? totalInstallments : 1,
-        notes: notes.trim() || null,
+        notes: notes.trim() || undefined,
       })
     }
   }

@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { LoadingState } from '@/components/feedback/LoadingState'
 import { ErrorState } from '@/components/feedback/ErrorState'
@@ -16,23 +15,18 @@ import {
   TrendingDown,
   ArrowDownRight,
   ArrowUpRight,
-  Clock,
   Calendar,
   AlertTriangle,
   CheckCircle2,
   QrCode,
   Search,
-  Filter,
   Eye,
   Edit2,
   Trash2,
   DollarSign,
-  Layers,
   PieChart,
   BarChart3,
   ShieldCheck,
-  Building2,
-  Tag,
 } from 'lucide-react'
 import type {
   Receivable,
@@ -175,7 +169,7 @@ export const FinancePage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl font-bold text-[#F1F5F9]">Gestão Financeira & Fluxo de Caixa</h2>
-            <Badge variant="emerald">Etapa 4 Ativa</Badge>
+            <Badge variant="positive">Etapa 4 Ativa</Badge>
           </div>
           <p className="text-xs text-[#94A3B8] mt-1">
             Controle contas a receber com baixas parciais, despesas operacionais e simulador de pagamentos idempotente.
@@ -214,9 +208,9 @@ export const FinancePage: React.FC = () => {
           <StatCard
             title="Saldo Líquido Realizado"
             value={formatCurrency(cashFlow.realizedNetBalanceCents)}
-            subtext="Recebido líquido vs Despesas pagas"
-            trend={cashFlow.realizedNetBalanceCents >= 0 ? 'up' : 'down'}
-            trendValue={cashFlow.realizedNetBalanceCents >= 0 ? '+ Positivo' : '- Negativo'}
+            subtitle="Recebido líquido vs Despesas pagas"
+            variant={cashFlow.realizedNetBalanceCents >= 0 ? 'positive' : 'critical'}
+            badgeText={cashFlow.realizedNetBalanceCents >= 0 ? '+ Positivo' : '- Negativo'}
             icon={
               cashFlow.realizedNetBalanceCents >= 0 ? (
                 <TrendingUp className="w-5 h-5 text-[#34D399]" />
@@ -231,13 +225,13 @@ export const FinancePage: React.FC = () => {
             value={formatCurrency(
               cashFlow.totalReceivablesPendingCents + cashFlow.totalReceivablesOverdueCents
             )}
-            subtext={
+            subtitle={
               overdueReceivablesCount > 0
                 ? `${overdueReceivablesCount} fatura(s) vencida(s)`
                 : 'Todas faturas no prazo'
             }
-            trend={overdueReceivablesCount > 0 ? 'down' : 'neutral'}
-            trendValue={
+            variant={overdueReceivablesCount > 0 ? 'critical' : 'sky'}
+            badgeText={
               overdueReceivablesCount > 0
                 ? `Atraso: ${formatCurrency(cashFlow.totalReceivablesOverdueCents)}`
                 : 'Em dia'
@@ -248,18 +242,18 @@ export const FinancePage: React.FC = () => {
           <StatCard
             title="Despesas Operacionais"
             value={formatCurrency(cashFlow.totalExpensesPaidCents)}
-            subtext={`A pagar: ${formatCurrency(cashFlow.totalExpensesPendingCents)}`}
-            trend="neutral"
-            trendValue="Saídas liquidadas"
+            subtitle={`A pagar: ${formatCurrency(cashFlow.totalExpensesPendingCents)}`}
+            variant="warning"
+            badgeText="Saídas liquidadas"
             icon={<ArrowDownRight className="w-5 h-5 text-[#F43F5E]" />}
           />
 
           <StatCard
             title="Saldo Projetado Futuro"
             value={formatCurrency(cashFlow.projectedNetBalanceCents)}
-            subtext="Previsão considerando vencimentos futuros"
-            trend={cashFlow.projectedNetBalanceCents >= 0 ? 'up' : 'down'}
-            trendValue="Projeção líquida"
+            subtitle="Previsão considerando vencimentos futuros"
+            variant={cashFlow.projectedNetBalanceCents >= 0 ? 'positive' : 'warning'}
+            badgeText="Projeção líquida"
             icon={<Wallet className="w-5 h-5 text-[#A78BFA]" />}
           />
         </div>
@@ -656,13 +650,13 @@ export const FinancePage: React.FC = () => {
                           </td>
 
                           <td className="py-3.5 px-4">
-                            {r.status === 'Paid' && <Badge variant="emerald">Quitado</Badge>}
+                            {r.status === 'Paid' && <Badge variant="positive">Quitado</Badge>}
                             {r.status === 'PartiallyPaid' && (
                               <Badge variant="sky">Parcial ({percent}%)</Badge>
                             )}
-                            {r.status === 'Overdue' && <Badge variant="rose">Atrasado</Badge>}
-                            {r.status === 'Pending' && <Badge variant="amber">Pendente</Badge>}
-                            {r.status === 'Cancelled' && <Badge variant="gray">Cancelado</Badge>}
+                            {r.status === 'Overdue' && <Badge variant="critical">Atrasado</Badge>}
+                            {r.status === 'Pending' && <Badge variant="warning">Pendente</Badge>}
+                            {r.status === 'Cancelled' && <Badge variant="default">Cancelado</Badge>}
                           </td>
 
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
@@ -850,11 +844,11 @@ export const FinancePage: React.FC = () => {
 
                           <td className="py-3.5 px-4">
                             {e.status === 'Paid' ? (
-                              <Badge variant="emerald">Pago</Badge>
+                              <Badge variant="positive">Pago</Badge>
                             ) : isOverdue ? (
-                              <Badge variant="rose">Vencido</Badge>
+                              <Badge variant="critical">Vencido</Badge>
                             ) : (
-                              <Badge variant="amber">A Pagar</Badge>
+                              <Badge variant="warning">A Pagar</Badge>
                             )}
                           </td>
 

@@ -21,108 +21,75 @@ import {
   Copy,
   X,
   FileText,
+  Activity,
+  Users,
+  ShieldCheck,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingState } from '@/components/feedback/LoadingState'
 import { ErrorState } from '@/components/feedback/ErrorState'
-import type { DemoDashboardStats } from '@/types'
-
-export interface OverdueInvoice {
-  id: string
-  invoiceNumber: string
-  contractNumber: string
-  contractTitle: string
-  clientName: string
-  amountCents: number
-  dueDate: string
-  daysOverdue: number
-  pixKey: string
-  phone?: string
-}
+import type { DashboardOverview, UrgentOverdueInvoice } from '@/types'
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
 
   // Estado interativo para check de compromissos diretamente no dashboard
-  const [completedCommitments, setCompletedCommitments] = useState<Record<number, boolean>>({})
+  const [completedCommitments, setCompletedCommitments] = useState<Record<string, boolean>>({})
 
   // Estado para modal e seleção de faturas vencidas vinculadas a clientes/contratos
   const [chargeModalOpen, setChargeModalOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<OverdueInvoice | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<UrgentOverdueInvoice | null>(null)
   const [paidInvoices, setPaidInvoices] = useState<Record<string, boolean>>({})
   const [pixCopied, setPixCopied] = useState(false)
 
-  // Faturas vencidas em carteira vinculadas a clientes e contratos
-  const overdueInvoices: OverdueInvoice[] = [
-    {
-      id: 'inv-4928',
-      invoiceNumber: '#4928',
-      contractNumber: 'CT-2026/04',
-      contractTitle: 'Consultoria de Design de Interiores',
-      clientName: 'Studio Alfa Arquitetura',
-      amountCents: 185000,
-      dueDate: '2026-10-15',
-      daysOverdue: 6,
-      pixKey: '00020126580014br.gov.bcb.pix0136servicore-cobranca-fatura-49280054000053039865802BR5925SERVICORE LTDA6009SAO PAULO62070503***6304E2D1',
-      phone: '+55 11 99882-1001',
-    },
-    {
-      id: 'inv-4890',
-      invoiceNumber: '#4890',
-      contractNumber: 'CT-2026/01',
-      contractTitle: 'Manutenção Mensal de Infraestrutura',
-      clientName: 'TechNova Soluções Digitais',
-      amountCents: 200000,
-      dueDate: '2026-10-10',
-      daysOverdue: 11,
-      pixKey: '00020126580014br.gov.bcb.pix0136servicore-cobranca-fatura-48900054000053039865802BR5925SERVICORE LTDA6009SAO PAULO62070503***6304A1B2',
-      phone: '+55 11 98774-2002',
-    },
-  ]
-
-  // Consome os dados demonstrativos providos pela API do backend
+  // Consome a visão geral consolidada real da API ASP.NET Core
   const {
-    data: stats,
+    data: overview,
     isLoading,
     isError,
     refetch,
     isRefetching,
-  } = useQuery<DemoDashboardStats>({
-    queryKey: ['dashboard-demo-stats'],
-    queryFn: () => api.get<DemoDashboardStats>('/health/demo-stats'),
-    staleTime: 60000,
+  } = useQuery<DashboardOverview>({
+    queryKey: ['dashboard-overview'],
+    queryFn: () => api.get<DashboardOverview>('/dashboard/overview'),
+    staleTime: 30000,
   })
 
   if (isLoading) {
-    return <LoadingState message="Carregando métricas do painel operacional..." fullPage />
+    return <LoadingState message="Consolidando métricas em tempo real do ServiCore..." fullPage />
   }
 
-  if (isError || !stats) {
+  if (isError || !overview) {
     return (
       <ErrorState
-        title="Não foi possível conectar ao backend"
-        message="Certifique-se de que a API ASP.NET Core está em execução (ex: dotnet run em backend/src/ServiCore.Api)."
+        title="Não foi possível sincronizar o painel executivo"
+        message="Verifique se o backend ASP.NET Core e o banco de dados estão respondendo normalmente."
         onRetry={() => refetch()}
         isRetrying={isRefetching}
       />
     )
   }
 
-  const toggleCommitment = (idx: number) => {
+  const { kpis, urgentOverdueInvoices, upcomingCommitments, monthlyCashFlowSeries, recentActivities } = overview
+
+  const toggleCommitment = (id: string) => {
     setCompletedCommitments((prev) => ({
       ...prev,
-      [idx]: !prev[idx],
+      [id]: !prev[id],
     }))
   }
 
-  const handleCopyPix = (key?: string) => {
-    const textToCopy = key || '00020126580014br.gov.bcb.pix0136servicore-cobranca-fatura-49280054000053039865802BR5925SERVICORE LTDA6009SAO PAULO62070503***6304E2D1'
-    navigator.clipboard.writeText(textToCopy)
+  const generatePixKey = (invoice: UrgentOverdueInvoice) => {
+    return `00020126580014br.gov.bcb.pix0136servicore-cobranca-${invoice.receivableId.substring(0, 8)}520400005303986540${(invoice.remainingCents / 100).toFixed(2)}5802BR5925SERVICORE LTDA6009SAO PAULO62070503***6304`
+  }
+
+  const handleCopyPix = (pixText: string) => {
+    navigator.clipboard.writeText(pixText)
     setPixCopied(true)
     setTimeout(() => setPixCopied(false), 2000)
   }
@@ -134,22 +101,39 @@ export const DashboardPage: React.FC = () => {
     }))
   }
 
+  // Cálculo de escala dinâmica para o gráfico de fluxo de caixa semestral
+  const maxCents = Math.max(
+    ...monthlyCashFlowSeries.flatMap((p) => [p.receivedCents, p.expensesCents]),
+    100000 // R$ 1.000 mínimo para manter proporções agradáveis quando zerado
+  )
 
   return (
     <div className="space-y-5 animate-in fade-in duration-150">
-      {/* Topo Operacional Integrado: Título + Resumo da Semana Promovido */}
+      {/* Topo Operacional Integrado: Título + Resumo em Tempo Real */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-[#1E2332]">
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-[#8E9CAE]">
-            Visão Geral Operacional & Financeira
+            Painel Executivo & Operações Unificadas
           </h2>
           <p className="text-xs text-[#64748B] mt-0.5">
-            Período de referência: <span className="text-[#F4F4F5] font-medium">{stats.period}</span>
+            Dados sincronizados em tempo real com auditoria ativa
           </p>
         </div>
 
-        {/* Resumo Operacional da Semana promovido perto do topo */}
+        {/* Resumo Operacional da Semana promovido no topo */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <div
+            onClick={() => navigate('/clientes')}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#11131C] border border-[#1E2332] text-xs hover:border-[#2C3347] cursor-pointer transition-colors shrink-0"
+            title="Ver carteira de clientes ativos"
+          >
+            <Users className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <span className="text-[#8E9CAE]">Clientes:</span>
+            <span className="font-semibold text-[#F4F4F5] tabular-nums">
+              {kpis.totalCustomersCount} ativos
+            </span>
+          </div>
+
           <div
             onClick={() => navigate('/contratos')}
             className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#11131C] border border-[#1E2332] text-xs hover:border-[#2C3347] cursor-pointer transition-colors shrink-0"
@@ -158,7 +142,7 @@ export const DashboardPage: React.FC = () => {
             <FileCheck2 className="w-3.5 h-3.5 text-[#10B981]" />
             <span className="text-[#8E9CAE]">Contratos:</span>
             <span className="font-semibold text-[#F4F4F5] tabular-nums">
-              {stats.kpis.activeContractsCount} em execução
+              {kpis.activeContractsCount} ativos
             </span>
           </div>
 
@@ -167,23 +151,22 @@ export const DashboardPage: React.FC = () => {
             className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#11131C] border border-[#1E2332] text-xs hover:border-[#2C3347] cursor-pointer transition-colors shrink-0"
             title="Ver tarefas pendentes"
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#F59E0B]" />
             <span className="text-[#8E9CAE]">Tarefas:</span>
             <span className="font-semibold text-[#F4F4F5] tabular-nums">
-              {stats.kpis.ongoingTasksCount} pendentes
+              {kpis.ongoingTasksCount} pendentes
             </span>
           </div>
         </div>
       </div>
 
-      {/* Barra de Atalhos Operacionais Refinada (Discreta e sem peso excessivo) */}
+      {/* Barra de Atalhos Operacionais */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] font-medium text-[#64748B] uppercase tracking-wider mr-1 hidden md:inline">
             Ações Rápidas:
           </span>
 
-          {/* Ação Primária Sóbria */}
           <button
             type="button"
             onClick={() => navigate('/contratos')}
@@ -193,7 +176,6 @@ export const DashboardPage: React.FC = () => {
             <span>Criar Contrato</span>
           </button>
 
-          {/* Botões Secundários Neutros com Contorno Suave */}
           <button
             type="button"
             onClick={() => navigate('/clientes')}
@@ -218,79 +200,93 @@ export const DashboardPage: React.FC = () => {
             className="h-8 px-3 rounded-md bg-[#11131C] border border-[#1E2332] hover:bg-[#161A26] hover:border-[#2C3347] text-[#94A3B8] hover:text-[#F4F4F5] text-xs transition-colors flex items-center gap-1.5 cursor-pointer group"
           >
             <PlusCircle className="w-3.5 h-3.5 text-[#64748B] group-hover:text-[#94A3B8]" />
-            <span>Lançar Despesa</span>
+            <span>Lançar Financeiro</span>
           </button>
         </div>
 
-        <span className="text-[11px] text-[#64748B] hidden lg:inline font-mono">
-          ServiCore v1.0
-        </span>
+        <div className="flex items-center gap-2">
+          <Badge variant="sky" className="text-[10px] font-mono">
+            Produção v1.0
+          </Badge>
+        </div>
       </div>
 
-      {/* Cards de Métricas Financeiras (KPIs) - Imediatamente visíveis Above the Fold */}
+      {/* Cards de Métricas Financeiras Principais (KPIs Reais) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <StatCard
           title="Receitas Recebidas"
-          value={formatCurrency(stats.kpis.totalReceivedCents)}
+          value={formatCurrency(kpis.totalReceivedCents)}
           variant="positive"
-          badgeText="+18% vs mês anterior"
-          subtitle="Entrada confirmada no caixa"
+          badgeText="Entrada realizada"
+          subtitle="Total acumulado em caixa"
           icon={<TrendingUp className="w-4 h-4" />}
           onClick={() => navigate('/financeiro')}
         />
 
         <StatCard
           title="A Receber (Pendentes)"
-          value={formatCurrency(stats.kpis.pendingReceivablesCents)}
+          value={formatCurrency(kpis.pendingReceivablesCents)}
           variant="sky"
-          badgeText="Previsão próx. 30 dias"
-          subtitle="Contratos faturados em aberto"
+          badgeText="Em carteira"
+          subtitle="Títulos faturados a vencer"
           icon={<Clock className="w-4 h-4" />}
           onClick={() => navigate('/financeiro')}
         />
 
         <StatCard
           title="Valores Vencidos"
-          value={formatCurrency(stats.kpis.overdueCents)}
+          value={formatCurrency(kpis.overdueReceivablesCents)}
           variant="critical"
-          badgeText="2 faturas em atraso"
-          subtitle="Necessitam cobrança ativa"
+          badgeText={
+            urgentOverdueInvoices.length > 0
+              ? `${urgentOverdueInvoices.length} ${urgentOverdueInvoices.length === 1 ? 'fatura em atraso' : 'faturas em atraso'}`
+              : 'Sem títulos vencidos'
+          }
+          subtitle="Cobrança ativa prioritária"
           icon={<AlertTriangle className="w-4 h-4" />}
           onClick={() => {
-            setSelectedInvoice(null)
-            setChargeModalOpen(true)
-          }}
-          action={{
-            label: 'Ver faturas em atraso (2)',
-            icon: <FileText className="w-3.5 h-3.5" />,
-            onClick: () => {
-              setSelectedInvoice(null)
+            if (urgentOverdueInvoices.length > 0) {
+              setSelectedInvoice(urgentOverdueInvoices[0])
               setChargeModalOpen(true)
-            },
+            } else {
+              navigate('/financeiro')
+            }
           }}
+          action={
+            urgentOverdueInvoices.length > 0
+              ? {
+                  label: `Emitir cobrança (${urgentOverdueInvoices.length})`,
+                  icon: <FileText className="w-3.5 h-3.5" />,
+                  onClick: () => {
+                    setSelectedInvoice(urgentOverdueInvoices[0])
+                    setChargeModalOpen(true)
+                  },
+                }
+              : undefined
+          }
         />
 
         <StatCard
-          title="Despesas Pagas"
-          value={formatCurrency(stats.kpis.paidExpensesCents)}
+          title="Despesas Liquidadas"
+          value={formatCurrency(kpis.paidExpensesCents)}
           variant="warning"
-          badgeText="Fixas e Variáveis"
-          subtitle="Saídas operacionais do mês"
+          badgeText="Saídas pagas"
+          subtitle="Despesas operacionais e fixas"
           icon={<Receipt className="w-4 h-4" />}
           onClick={() => navigate('/financeiro')}
         />
       </div>
 
-      {/* Grids Centrais: Fluxo de Caixa e Próximos Compromissos Interativos */}
+      {/* Grids Centrais: Gráfico Semestral e Próximos Compromissos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Gráfico Visual Demonstrativo do Fluxo de Caixa */}
+        {/* Gráfico do Fluxo de Caixa Real Consolidado */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Fluxo de Caixa Operacional</CardTitle>
                 <CardDescription>
-                  Comparativo entre receitas recebidas e despesas liquidadas nos últimos 6 meses
+                  Comparativo semestral entre receitas recebidas e despesas pagas
                 </CardDescription>
               </div>
               <Badge variant="default" className="text-[11px] font-mono">
@@ -300,7 +296,7 @@ export const DashboardPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4 pt-1">
-              {/* Legenda Discreta */}
+              {/* Legenda */}
               <div className="flex items-center justify-end gap-5 text-xs text-[#8E9CAE] pb-1">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-xs bg-[#1D68F2]" /> Receita Recebida
@@ -312,25 +308,24 @@ export const DashboardPage: React.FC = () => {
 
               {/* Colunas do Gráfico */}
               <div className="grid grid-cols-6 gap-2 sm:gap-4 items-end h-44 pt-2 border-b border-[#1E2332] pb-2">
-                {stats.cashFlowSeries.map((item) => {
-                  const maxVal = 16000
-                  const heightRec = Math.round((item.received / maxVal) * 100)
-                  const heightExp = Math.round((item.expenses / maxVal) * 100)
+                {monthlyCashFlowSeries.map((item) => {
+                  const heightRec = Math.max(Math.round((item.receivedCents / maxCents) * 100), 2)
+                  const heightExp = Math.max(Math.round((item.expensesCents / maxCents) * 100), 2)
 
                   return (
                     <div key={item.month} className="flex flex-col items-center gap-2 h-full justify-end group">
                       <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-32">
                         {/* Barra Receita */}
                         <div
-                          className="w-1/2 max-w-[20px] bg-[#1D68F2] hover:bg-[#2563EB] rounded-t-xs transition-colors duration-150 relative cursor-pointer"
-                          style={{ height: `${heightRec}%` }}
-                          title={`Receitas: R$ ${item.received.toLocaleString('pt-BR')}`}
+                          className="w-1/2 max-w-[20px] bg-[#1D68F2] hover:bg-[#2563EB] rounded-t-xs transition-all duration-150 relative cursor-pointer"
+                          style={{ height: `${item.receivedCents > 0 ? heightRec : 4}%` }}
+                          title={`Receitas em ${item.month}: ${formatCurrency(item.receivedCents)}`}
                         />
                         {/* Barra Despesa */}
                         <div
-                          className="w-1/2 max-w-[20px] bg-[#EF4444]/75 hover:bg-[#EF4444] rounded-t-xs transition-colors duration-150 relative cursor-pointer"
-                          style={{ height: `${heightExp}%` }}
-                          title={`Despesas: R$ ${item.expenses.toLocaleString('pt-BR')}`}
+                          className="w-1/2 max-w-[20px] bg-[#EF4444]/75 hover:bg-[#EF4444] rounded-t-xs transition-all duration-150 relative cursor-pointer"
+                          style={{ height: `${item.expensesCents > 0 ? heightExp : 4}%` }}
+                          title={`Despesas em ${item.month}: ${formatCurrency(item.expensesCents)}`}
                         />
                       </div>
                       <span className="text-[10px] sm:text-[11px] font-mono text-[#8E9CAE] group-hover:text-[#F4F4F5] truncate">
@@ -342,91 +337,102 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-[#64748B] pt-0.5">
-                <span>Total médio mensal apurado: R$ 13.800,00</span>
-                <span className="font-mono">Dados consolidados</span>
+                <span>
+                  Saldo Líquido Realizado:{' '}
+                  <strong className={kpis.realizedNetBalanceCents >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}>
+                    {formatCurrency(kpis.realizedNetBalanceCents)}
+                  </strong>
+                </span>
+                <span className="font-mono">Dados auditados</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Painel Operacional: Próximos Compromissos com Interações Diretas */}
+        {/* Próximos Compromissos Interativos */}
         <Card className="flex flex-col justify-between">
           <div>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Próximos Compromissos</CardTitle>
-                  <CardDescription>Ações interativas e entregas da semana</CardDescription>
+                  <CardDescription>Entregas e compromissos da agenda</CardDescription>
                 </div>
                 <CalendarCheck2 className="w-4 h-4 text-[#38BDF8]" />
               </div>
             </CardHeader>
             <CardContent className="space-y-2.5 p-4 sm:p-5">
-              {stats.recentCommitments.map((event, idx) => {
-                const isCompleted = Boolean(completedCommitments[idx])
-                const isMeeting = event.type === 'Reunião'
+              {upcomingCommitments.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[#64748B]">
+                  Nenhum evento agendado para os próximos 7 dias.
+                </div>
+              ) : (
+                upcomingCommitments.map((event) => {
+                  const isCompleted = Boolean(completedCommitments[event.id] ?? event.isCompleted)
+                  const isMeeting = event.type === 'Meeting' || event.typeName.toLowerCase().includes('reuni')
 
-                return (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg border transition-colors ${
-                      isCompleted
-                        ? 'bg-[#10131B]/60 border-[#1E2332]/60 opacity-60'
-                        : 'bg-[#11131C] border-[#1E2332] hover:border-[#2C3347]'
-                    } flex items-start justify-between gap-3`}
-                  >
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      {/* Checkbox tátil para concluir diretamente */}
-                      <button
-                        type="button"
-                        onClick={() => toggleCommitment(idx)}
-                        className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
-                          isCompleted
-                            ? 'bg-[#10B981] border-[#10B981] text-[#090A0F]'
-                            : 'border-[#2C3347] hover:border-[#38BDF8] bg-[#161A26]'
-                        }`}
-                        title={isCompleted ? 'Desmarcar conclusão' : 'Marcar como concluído'}
-                      >
-                        {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
-                      </button>
-
-                      <div className="space-y-0.5 min-w-0">
-                        <p
-                          className={`text-xs font-semibold leading-tight truncate ${
-                            isCompleted ? 'line-through text-[#64748B]' : 'text-[#F4F4F5]'
+                  return (
+                    <div
+                      key={event.id}
+                      className={`p-3 rounded-lg border transition-colors ${
+                        isCompleted
+                          ? 'bg-[#10131B]/60 border-[#1E2332]/60 opacity-60'
+                          : 'bg-[#11131C] border-[#1E2332] hover:border-[#2C3347]'
+                      } flex items-start justify-between gap-3`}
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleCommitment(event.id)}
+                          className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
+                            isCompleted
+                              ? 'bg-[#10B981] border-[#10B981] text-[#090A0F]'
+                              : 'border-[#2C3347] hover:border-[#38BDF8] bg-[#161A26]'
                           }`}
+                          title={isCompleted ? 'Desmarcar conclusão' : 'Marcar como concluído'}
                         >
-                          {event.title}
-                        </p>
-                        <p className="text-[11px] text-[#8E9CAE] truncate">Cliente: {event.client}</p>
-                        <p className="text-[10px] text-[#64748B] font-mono">{formatDate(event.date)}</p>
+                          {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+                        </button>
+
+                        <div className="space-y-0.5 min-w-0">
+                          <p
+                            className={`text-xs font-semibold leading-tight truncate ${
+                              isCompleted ? 'line-through text-[#64748B]' : 'text-[#F4F4F5]'
+                            }`}
+                          >
+                            {event.title}
+                          </p>
+                          {event.customerName && (
+                            <p className="text-[11px] text-[#8E9CAE] truncate">Cliente: {event.customerName}</p>
+                          )}
+                          <p className="text-[10px] text-[#64748B] font-mono">{formatDate(event.date)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isMeeting && !isCompleted && (
+                          <a
+                            href={event.locationOrLink?.startsWith('http') ? event.locationOrLink : 'https://meet.google.com'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 rounded bg-[#161A26] border border-[#23293D] text-[#8E9CAE] hover:text-[#38BDF8] hover:border-[#38BDF8]/40 transition-colors"
+                            title="Abrir sala de reunião online"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+
+                        <Badge
+                          variant={isCompleted ? 'positive' : event.type === 'Delivery' ? 'positive' : 'sky'}
+                          className="text-[10px] py-0 px-1.5 font-mono"
+                        >
+                          {isCompleted ? 'Concluído' : event.typeName}
+                        </Badge>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Link externo para Reuniões sem sair da tela */}
-                      {isMeeting && !isCompleted && (
-                        <a
-                          href="https://meet.google.com"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1 rounded bg-[#161A26] border border-[#23293D] text-[#8E9CAE] hover:text-[#38BDF8] hover:border-[#38BDF8]/40 transition-colors"
-                          title="Abrir sala de reunião online"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-
-                      <Badge
-                        variant={isCompleted ? 'positive' : event.type === 'Entrega' ? 'positive' : 'sky'}
-                        className="text-[10px] py-0 px-1.5 font-mono"
-                      >
-                        {isCompleted ? 'Concluído' : event.type}
-                      </Badge>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </CardContent>
           </div>
 
@@ -444,11 +450,64 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Modal / Painel de Valores Vencidos com Fluxo em 2 Níveis */}
+      {/* Trilha de Auditoria & Atividades Recentes */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#38BDF8]" />
+              <div>
+                <CardTitle className="text-sm">Trilha de Auditoria Operacional & Segurança</CardTitle>
+                <CardDescription>
+                  Registro cronológico imutável de eventos e ações executadas no workspace
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-[#34D399] font-mono">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Auditoria Ativa</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recentActivities.length === 0 ? (
+            <div className="text-center py-6 text-xs text-[#64748B]">
+              Nenhum registro de auditoria disponível no momento.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentActivities.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-[#11131C] border border-[#1E2332] text-xs hover:border-[#2C3347] transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="px-2 py-0.5 rounded bg-[#191D2B] border border-[#242B3E] font-mono text-[10px] text-[#38BDF8] shrink-0">
+                      {item.action}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium text-[#F4F4F5] truncate">{item.description}</p>
+                      <p className="text-[11px] text-[#64748B]">
+                        Entidade: <span className="text-[#8E9CAE] font-medium">{item.entityName}</span>
+                        {item.userFullName && ` • Por: ${item.userFullName}`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-[#64748B] font-mono shrink-0 pl-2">
+                    {formatDateTime(item.timestampUtc)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Cobrança de Faturas Vencidas */}
       {chargeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-[#0E1017] border border-[#1E2332] rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
-            {/* Cabeçalho do Modal */}
+            {/* Cabeçalho */}
             <div className="flex items-center justify-between pb-3 border-b border-[#1E2332]">
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-md bg-[#EF4444]/15 text-[#EF4444]">
@@ -456,12 +515,10 @@ export const DashboardPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-[#F4F4F5]">
-                    {selectedInvoice ? `Cobrança da Fatura ${selectedInvoice.invoiceNumber}` : 'Faturas com Pagamento em Atraso'}
+                    {selectedInvoice ? `Cobrança de Fatura` : 'Títulos em Atraso'}
                   </h3>
                   <p className="text-xs text-[#8E9CAE]">
-                    {selectedInvoice
-                      ? `Cliente: ${selectedInvoice.clientName}`
-                      : 'Selecione a fatura para visualizar detalhes ou emitir cobrança'}
+                    {selectedInvoice ? `Cliente: ${selectedInvoice.customerName}` : 'Selecione a fatura para emitir cobrança'}
                   </p>
                 </div>
               </div>
@@ -478,23 +535,16 @@ export const DashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Conteúdo: Nível 1 (Lista de Faturas Vencidas por Cliente/Contrato) */}
+            {/* Conteúdo Nível 1: Seleção de Fatura */}
             {!selectedInvoice ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between px-1 text-xs">
-                  <span className="text-[#8E9CAE]">Total em atraso apurado:</span>
-                  <span className="font-bold text-[#F87171] tabular-nums font-mono-numbers">
-                    {formatCurrency(stats.kpis.overdueCents)}
-                  </span>
-                </div>
-
                 <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-                  {overdueInvoices.map((inv) => {
-                    const isPaid = Boolean(paidInvoices[inv.id])
+                  {urgentOverdueInvoices.map((inv) => {
+                    const isPaid = Boolean(paidInvoices[inv.receivableId])
 
                     return (
                       <div
-                        key={inv.id}
+                        key={inv.receivableId}
                         onClick={() => !isPaid && setSelectedInvoice(inv)}
                         className={`p-3.5 rounded-lg border transition-all ${
                           isPaid
@@ -504,36 +554,22 @@ export const DashboardPage: React.FC = () => {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-xs text-[#F4F4F5] font-mono">
-                                {inv.invoiceNumber}
-                              </span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#191D2B] text-[#8E9CAE] border border-[#242B3E] font-mono">
-                                {inv.contractNumber}
-                              </span>
-                            </div>
-
-                            <p className="text-xs font-medium text-[#F4F4F5] truncate">
-                              {inv.clientName}
-                            </p>
-                            <p className="text-[11px] text-[#64748B] truncate">
-                              {inv.contractTitle}
-                            </p>
-
+                            <p className="text-xs font-semibold text-[#F4F4F5] truncate">{inv.invoiceTitle}</p>
+                            <p className="text-xs text-[#8E9CAE] truncate">{inv.customerName}</p>
+                            {inv.contractTitle && (
+                              <p className="text-[11px] text-[#64748B] truncate">{inv.contractTitle}</p>
+                            )}
                             <div className="flex items-center gap-2 pt-1 text-[10px] text-[#8E9CAE]">
                               <span>Vencimento: {formatDate(inv.dueDate)}</span>
                               <span>•</span>
-                              <span className="text-[#EF4444] font-medium">
-                                {inv.daysOverdue} dias em atraso
-                              </span>
+                              <span className="text-[#EF4444] font-medium">{inv.daysOverdue} dias de atraso</span>
                             </div>
                           </div>
 
                           <div className="flex flex-col items-end justify-between self-stretch shrink-0">
                             <span className="text-xs font-bold text-[#F87171] tabular-nums font-mono-numbers">
-                              {formatCurrency(inv.amountCents)}
+                              {formatCurrency(inv.remainingCents)}
                             </span>
-
                             {isPaid ? (
                               <Badge variant="positive" className="text-[10px] py-0 px-1.5 font-mono">
                                 Pago
@@ -557,61 +593,34 @@ export const DashboardPage: React.FC = () => {
                     )
                   })}
                 </div>
-
-                <div className="pt-2 flex items-center justify-between border-t border-[#1E2332] text-xs">
-                  <span className="text-[11px] text-[#64748B]">
-                    Exibindo faturas com títulos vencidos na carteira
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => {
-                      setChargeModalOpen(false)
-                      navigate('/financeiro')
-                    }}
-                  >
-                    Ver todas no Financeiro
-                  </Button>
-                </div>
               </div>
             ) : (
-              /* Conteúdo: Nível 2 (Detalhes da Fatura & Ações Específicas de Cobrança) */
+              /* Conteúdo Nível 2: Cobrança Ativa da Fatura */
               <div className="space-y-3.5 text-xs">
-                {/* Botão de Retorno à Lista */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedInvoice(null)}
-                  className="text-xs text-[#8E9CAE] hover:text-[#F4F4F5] flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Voltar para lista de faturas</span>
-                </button>
+                {urgentOverdueInvoices.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInvoice(null)}
+                    className="text-xs text-[#8E9CAE] hover:text-[#F4F4F5] flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Voltar para lista de títulos</span>
+                  </button>
+                )}
 
-                {/* Resumo da Fatura Selecionada */}
                 <div className="p-3.5 rounded-lg bg-[#140D10] border border-[#EF4444]/30 space-y-2">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-[#F4F4F5] font-mono">
-                          {selectedInvoice.invoiceNumber}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#191D2B] text-[#8E9CAE] border border-[#242B3E] font-mono">
-                          {selectedInvoice.contractNumber}
-                        </span>
-                      </div>
-                      <p className="text-xs font-semibold text-[#F4F4F5] mt-1">
-                        {selectedInvoice.clientName}
-                      </p>
-                      <p className="text-[11px] text-[#8E9CAE]">
-                        {selectedInvoice.contractTitle}
-                      </p>
+                      <p className="text-xs font-bold text-[#F4F4F5]">{selectedInvoice.invoiceTitle}</p>
+                      <p className="text-xs text-[#F4F4F5] mt-0.5">{selectedInvoice.customerName}</p>
+                      {selectedInvoice.contractTitle && (
+                        <p className="text-[11px] text-[#8E9CAE]">{selectedInvoice.contractTitle}</p>
+                      )}
                     </div>
-
                     <div className="text-right">
-                      <p className="text-[11px] text-[#8E9CAE]">Valor devido:</p>
+                      <p className="text-[11px] text-[#8E9CAE]">Saldo Devido:</p>
                       <p className="text-sm font-bold text-[#F87171] tabular-nums font-mono-numbers">
-                        {formatCurrency(selectedInvoice.amountCents)}
+                        {formatCurrency(selectedInvoice.remainingCents)}
                       </p>
                       <span className="text-[10px] text-[#EF4444] font-medium">
                         {selectedInvoice.daysOverdue} dias de atraso
@@ -620,21 +629,21 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Opção 1: Chave Pix da Fatura */}
+                {/* Opção Pix */}
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-[#8E9CAE] block">
-                    Chave Pix da fatura para liquidação imediata:
+                    Chave Pix para quitação:
                   </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
-                      value={selectedInvoice.pixKey}
+                      value={generatePixKey(selectedInvoice)}
                       className="flex-1 bg-[#131620] border border-[#1E2332] rounded-md px-2.5 py-1.5 text-xs text-[#8E9CAE] font-mono select-all"
                     />
                     <button
                       type="button"
-                      onClick={() => handleCopyPix(selectedInvoice.pixKey)}
+                      onClick={() => handleCopyPix(generatePixKey(selectedInvoice))}
                       className="h-8 px-2.5 rounded-md bg-[#161A26] border border-[#282F44] hover:bg-[#1D2233] text-xs font-medium flex items-center gap-1.5 text-[#F4F4F5] transition-colors cursor-pointer shrink-0"
                     >
                       {pixCopied ? (
@@ -652,27 +661,27 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Opção 2: Disparo Direto via WhatsApp com Mensagem Personalizada */}
+                {/* Disparo WhatsApp */}
                 <div className="pt-1 space-y-2">
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent(
-                      `Olá ${selectedInvoice.clientName}, tudo bem? Identificamos que a fatura ${selectedInvoice.invoiceNumber} referente ao contrato ${selectedInvoice.contractNumber} (${selectedInvoice.contractTitle}) no valor de ${formatCurrency(selectedInvoice.amountCents)} venceu em ${formatDate(selectedInvoice.dueDate)}. Segue a chave Pix para regularização imediata: ${selectedInvoice.pixKey}`
+                    href={`https://wa.me/${(selectedInvoice.customerPhone || '').replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Olá ${selectedInvoice.customerName}, tudo bem? Identificamos que o título "${selectedInvoice.invoiceTitle}" no valor de ${formatCurrency(selectedInvoice.remainingCents)} com vencimento em ${formatDate(selectedInvoice.dueDate)} consta em aberto. Segue a chave Pix para regularização: ${generatePixKey(selectedInvoice)}`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
                     className="w-full h-9 rounded-md bg-[#10B981] hover:bg-[#059669] text-[#090A0F] font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Enviar Cobrança via WhatsApp para o Cliente</span>
+                    <span>Disparar Cobrança via WhatsApp</span>
                   </a>
 
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleMarkAsPaid(selectedInvoice.id)}
+                      onClick={() => handleMarkAsPaid(selectedInvoice.receivableId)}
                       className="flex-1 h-8 rounded-md bg-[#161A26] border border-[#1E2332] hover:bg-[#1C2130] text-xs font-medium text-[#F4F4F5] transition-colors"
                     >
-                      {paidInvoices[selectedInvoice.id] ? '✓ Marcado como Pago' : 'Marcar como Pago'}
+                      {paidInvoices[selectedInvoice.receivableId] ? '✓ Marcado como Regularizado' : 'Marcar Regularizado'}
                     </button>
 
                     <Button
@@ -681,10 +690,10 @@ export const DashboardPage: React.FC = () => {
                       className="h-8"
                       onClick={() => {
                         setChargeModalOpen(false)
-                        navigate('/contratos')
+                        navigate('/financeiro')
                       }}
                     >
-                      Ver Contrato
+                      Ver no Financeiro
                     </Button>
                   </div>
                 </div>
@@ -696,4 +705,3 @@ export const DashboardPage: React.FC = () => {
     </div>
   )
 }
-

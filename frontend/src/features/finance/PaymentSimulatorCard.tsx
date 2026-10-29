@@ -13,8 +13,6 @@ import {
   Check,
   AlertCircle,
   Zap,
-  ArrowRight,
-  Layers,
   Sparkles,
 } from 'lucide-react'
 import type {
